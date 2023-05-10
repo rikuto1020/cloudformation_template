@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS Config, CloudTrail, ECS, and RDS log storage using Kinesis Firehose
+
+Parameters:
+  MyDBInstanceId:
+    Type: String
+    Default: '!ImportValue MyDBInstanceId'
+    Description: "Environment name"
+    
+# ------------------------------------------------------------#
+#  S3バケット
+# ------------------------------------------------------------#
+
+Resources:
+  # AWS Config用のS3バケット
+  ConfigBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "config-bucket-${AWS::AccountId}"
+
+  # CloudTrail用のS3バケット
+  CloudTrailBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "cloudtrail-bucket-${AWS::AccountId}"
+
+  # RDSの監査ログ用のS3バケット
+  RDSLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "rds-audit-logs-bucket-${AWS::AccountId}"
+
+# ------------------------------------------------------------#
+#  IAMロール
+# ------------------------------------------------------------#
+
+  # ログ配信のためのIAMロール
+  LogDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - firehose.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: LogDeliveryPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                Resource:
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/rds/instance/${MyDBInstanceId}/audit:*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Join ['', ['arn:aws:s3:::', !Ref RDSLogsBucket, '/*']]
+
+  # サブスクリプションフィルタ用のIAMロール
+  SubscriptionFilterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - logs.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: SubscriptionFilterPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - firehose:PutRecord
+                  - firehose:PutRecordBatch
+                Resource:
+                  - !GetAtt KinesisFirehoseToRDSLogs.Arn
+
+# ------------------------------------------------------------#
+#  Kinesis Firehose
+# ------------------------------------------------------------#
+
+  # RDS監査ログ用のKinesis Firehose
+  KinesisFirehoseToRDSLogs:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: kinesis-firehose-to-rds-audit-logs
+      S3DestinationConfiguration:
+        BucketARN: !GetAtt RDSLogsBucket.Arn
+        BufferingHints:
+          IntervalInSeconds: 60
+          SizeInMBs: 5
+        CompressionFormat: GZIP
+        Prefix: rds-audit-logs/
+        ErrorOutputPrefix: error/
+        RoleARN: !GetAtt LogDeliveryRole.Arn
+
+# ------------------------------------------------------------#
+#  CloudWatch Logs Subscription Filter
+# ------------------------------------------------------------#
+
+  # RDS監査ログ用のCloudWatch Logsサブスクリプションフィルタ
+  RDSSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: !GetAtt KinesisFirehoseToRDSLogs.Arn
+      FilterPattern: ""
+      LogGroupName: !Sub '/aws/rds/instance/${MyDBInstanceId}/audit'
+      RoleArn: !GetAtt SubscriptionFilterRole.Arn

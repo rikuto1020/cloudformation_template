@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: APIGateway,Route53 Record Set
+
+# ------------------------------------------------------------#
+#  API Gateway
+# ------------------------------------------------------------#
+Resources:
+  MyApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: MyApi
+      ProtocolType: HTTP
+
+  VpcLink:
+    Type: AWS::ApiGatewayV2::VpcLink
+    Properties:
+      Name: MyVpcLink
+      SecurityGroupIds:
+        - !ImportValue <your-import-value-name-for-api-sg-01>
+      SubnetIds:
+        - !ImportValue <your-import-value-name-for-private-subnet1-id>
+        - !ImportValue <your-import-value-name-for-private-subnet2-id>
+
+  MyApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref MyApi
+      IntegrationType: HTTP_PROXY
+      IntegrationMethod: ANY
+      IntegrationUri: !ImportValue <your-import-value-name-for-alb-listener-arn>
+      ConnectionType: VPC_LINK
+      ConnectionId: !Ref VpcLink
+      PayloadFormatVersion: '1.0'
+      TimeoutInMillis: 29000
+
+  MyApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref MyApi
+      RouteKey: 'ANY /{proxy+}'
+      Target: !Sub "integrations/${MyApiIntegration}"
+
+  MyApiRouteRoot:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref MyApi
+      RouteKey: 'ANY /'
+      Target: !Sub "integrations/${MyApiIntegration}"
+
+  MyApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref MyApi
+      AutoDeploy: true
+      StageName: prod
+  
+  MyApiDomain:
+    Type: AWS::ApiGatewayV2::DomainName
+    Properties:
+      DomainName: physio-suggest.com
+      DomainNameConfigurations:
+        - CertificateArn: "<your-acm-certificate-arn>"
+          EndpointType: REGIONAL
+
+  MyApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      ApiId: !Ref MyApi
+      DomainName: !Ref MyApiDomain
+      Stage: !Ref MyApiStage
+
+# ------------------------------------------------------------#
+#  Route 53 Record Set
+# ------------------------------------------------------------#
+
+  Route53RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: "<your-hosted-zone-id>"
+      Name: !Sub "api.physio-suggest.com."
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt MyApiDomain.RegionalDomainName
+        HostedZoneId: "Z1YSHQZHG15GKL" # Update this value for the Tokyo region
+
+Outputs:
+  ApiUrl:
+    Description: The URL of the HTTP API Gateway
+    Value: !Sub https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/
