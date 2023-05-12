@@ -1,0 +1,389 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS monitoring and alerting configuration
+
+# ------------------------------------------------------------#
+#  SNS
+# ------------------------------------------------------------#
+
+Resources:
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: AlarmSNSTopic
+      TopicName: AlarmSNSTopic
+
+  SNSTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: test@test.com
+      TopicArn: !Ref SNSTopic
+
+# ------------------------------------------------------------#
+#  EventBridge
+# ------------------------------------------------------------#
+
+  EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Trigger SNS notification when CloudWatch Alarm is in ALARM state
+      EventPattern:
+        source:
+          - aws.cloudwatch
+        detail-type:
+          - CloudWatch Alarm State Change
+        detail:
+          state:
+            value:
+              - ALARM
+      Targets:
+        - Arn: !Ref SNSTopic
+          Id: SNSTopicTarget
+          InputTransformer:
+            InputPathsMap:
+              "Account": "$.account"
+              "AlarmName": "$.detail.alarmName"
+              "MetricsName": "$.detail.configuration.metrics[0].metricStat.metric.name"
+              "Reason": "$.detail.state.reason"
+              "Time": "$.time"
+            InputTemplate: |-
+              "AWS Account ID: <Account>"
+              "発生時間(GMT): <Time>"
+              "アラーム名: <AlarmName>"
+              "発生メトリクス: <MetricsName>"
+              "理由: <Reason>"
+
+# ------------------------------------------------------------#
+#  CloudWatchAlarm
+# ------------------------------------------------------------#
+
+  MyAlarmHighCPU1:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighCPU
+      AlarmDescription: "Trigger an alarm if the CPU usage is too high"
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService1-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighMemory1:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighMemory
+      AlarmDescription: "Trigger an alarm if the memory usage is too high"
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService1-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighCPU2:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighCPU
+      AlarmDescription: "Trigger an alarm if the CPU usage is too high"
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService2-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighMemory2:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighMemory
+      AlarmDescription: "Trigger an alarm if the memory usage is too high"
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService2-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighCPU3:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighCPU
+      AlarmDescription: "Trigger an alarm if the CPU usage is too high"
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService3-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighMemory3:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighMemory
+      AlarmDescription: "Trigger an alarm if the memory usage is too high"
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService3-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+  
+  MyAlarmHighCPU4:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighCPU
+      AlarmDescription: "Trigger an alarm if the CPU usage is too high"
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService4-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighMemory4:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighMemory
+      AlarmDescription: "Trigger an alarm if the memory usage is too high"
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService4-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighCPU5:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighCPU
+      AlarmDescription: "Trigger an alarm if the CPU usage is too high"
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService5-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighMemory5:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighMemory
+      AlarmDescription: "Trigger an alarm if the memory usage is too high"
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService5-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighCPU6:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighCPU
+      AlarmDescription: "Trigger an alarm if the CPU usage is too high"
+      Namespace: AWS/ECS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService6-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  MyAlarmHighMemory6:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: MyAlarmHighMemory
+      AlarmDescription: "Trigger an alarm if the memory usage is too high"
+      Namespace: AWS/ECS
+      MetricName: MemoryUtilization
+      Dimensions:
+        - Name: ClusterName
+          Value: !ImportValue MyECSCluster-ID
+        - Name: ServiceName
+          Value: !ImportValue MyService6-ID
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+  
+  RDSAlarmHighCPU:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: RDSAlarmHighCPU
+      AlarmDescription: "Trigger an alarm if the RDS CPU usage is too high"
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !ImportValue MyRDSInstanceIdentifier
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '80'
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  RDSAlarmHighMemory:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: RDSAlarmHighMemory
+      AlarmDescription: "Trigger an alarm if the RDS Freeable Memory is too low"
+      Namespace: AWS/RDS
+      MetricName: FreeableMemory
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !ImportValue MyDBInstanceId
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '1000000000' 
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+  RDSAlarmHighDiskUsage:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: RDSAlarmHighDiskUsage
+      AlarmDescription: "Trigger an alarm if the RDS disk usage is too high"
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !ImportValue MyDBInstanceId
+      Statistic: Average
+      Period: '60'
+      EvaluationPeriods: '1'
+      Threshold: '10000000000' 
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+      OKActions:
+        - !Ref SNSTopic
+
+Outputs:
+  SNSTopicArn:
+    Description: "The ARN of the SNS Topic"
+    Value: !Ref SNSTopic
+    Export:
+      Name: SNSTopicArn

@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS for MySQL 
+
+# ------------------------------------------------------------#
+#  RDSSubnetGroup
+# ------------------------------------------------------------#
+
+Resources:
+  MyDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: My DB subnet group
+      SubnetIds:
+        - !ImportValue PrivateSubnet5-ID
+        - !ImportValue PrivateSubnet6-ID
+
+# ------------------------------------------------------------#
+#  RDSParamaterGroup
+# ------------------------------------------------------------#
+
+  MyDBParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: Custom MySQL parameter group
+      Family: mysql8.0
+      Parameters:
+        general_log: '1'
+        slow_query_log: '1'
+        log_output: FILE
+
+# ------------------------------------------------------------#
+#  RDSOptionGroup
+# ------------------------------------------------------------#
+  
+  MyOptionGroup:
+    Type: AWS::RDS::OptionGroup
+    Properties:
+      EngineName: MySQL
+      MajorEngineVersion: '8.0'
+      OptionGroupDescription: Option group with AWS_AUDIT_PLUGIN and SERVER_AUDIT_EVENTS
+      OptionConfigurations:
+        - OptionName: MARIADB_AUDIT_PLUGIN
+
+# ------------------------------------------------------------#
+#  RDS
+# ------------------------------------------------------------#
+
+  MyDBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: mydb
+      DBName: mydb
+      AllocatedStorage: '20'
+      DBInstanceClass: db.t3.micro
+      Engine: MySQL
+      EngineVersion: '8.0.32' # バージョンを 8.0.21 に変更
+      MasterUsername: !Ref DBMasterUsername
+      MasterUserPassword: !Ref DBMasterUserPassword
+      VPCSecurityGroups:
+        - !ImportValue SG-RDS-01
+      DBSubnetGroupName: !Ref MyDBSubnetGroup
+      PubliclyAccessible: 'false'
+      BackupRetentionPeriod: 0
+      StorageEncrypted: false
+      EnablePerformanceInsights: false
+      MonitoringInterval: 0
+      MultiAZ: 'false'
+      DBParameterGroupName: !Ref MyDBParameterGroup
+      OptionGroupName: !Ref MyOptionGroup
+      EnableCloudwatchLogsExports:
+        - error
+        - general
+        - slowquery
+        - audit
+
+  EnhancedMonitoringRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - rds.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: CloudWatchLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: '*'
+                
+Parameters:
+  DBMasterUsername:
+    Description: The database admin account username
+    Type: String
+    MinLength: 1
+    MaxLength: 16
+    AllowedPattern: ^[\w]+$
+
+  DBMasterUserPassword:
+    Description: The database admin account password
+    Type: String
+    MinLength: 8
+    MaxLength: 41
+    AllowedPattern: ^[A-Za-z0-9!@#$%^&*()-=_+,.?]+$
+
+Outputs:
+  MyDBInstanceId:
+    Description: The ID of the RDS instance
+    Value: !Ref MyDBInstance
+    Export:
+      Name: MyDBInstanceId
+

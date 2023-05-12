@@ -1,0 +1,78 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS Backup for RDS
+
+Parameters:
+  MyDBInstanceId:
+    Type: String
+    Default: 'MyDBInstanceId'
+    Description: "Environment name"
+
+# ------------------------------------------------------------#
+#  BackupVault
+# ------------------------------------------------------------#
+
+Resources:
+  RDSBackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: RDSBackupVault
+
+# ------------------------------------------------------------#
+#  BackupRole
+# ------------------------------------------------------------#
+
+  RDSBackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - backup.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: '/'
+      Policies:
+        - PolicyName: RDSBackupPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - rds:CreateDBSnapshot
+                  - rds:DescribeDBSnapshots
+                Resource: '*'
+
+# ------------------------------------------------------------#
+#  BackupPlan
+# ------------------------------------------------------------#
+
+  RDSBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: RDSBackupPlan
+        BackupPlanRule:
+          - RuleName: DailyBackupRule
+            ScheduleExpression: "cron(0 12 * * ? *)" # Daily at 12:00 UTC
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 180
+            Lifecycle:
+              DeleteAfterDays: 30 # Retention period in days
+            TargetBackupVault: !Ref RDSBackupVault
+
+# ------------------------------------------------------------#
+#  BackupResource
+# ------------------------------------------------------------#
+
+  RDSBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref RDSBackupPlan
+      BackupSelection:
+        SelectionName: RDSBackupSelection
+        IamRoleArn: !GetAtt RDSBackupRole.Arn
+        Resources:
+          - !Ref MyDBInstanceId

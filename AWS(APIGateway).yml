@@ -57,9 +57,9 @@ Resources:
   MyApiDomain:
     Type: AWS::ApiGatewayV2::DomainName
     Properties:
-      DomainName: physio-suggest.com
+      DomainName: example.com
       DomainNameConfigurations:
-        - CertificateArn: "<your-acm-certificate-arn>"
+        - CertificateArn: "arn:aws:acm:region:account-id:certificate/random-id"
           EndpointType: REGIONAL
 
   MyApiMapping:
@@ -76,12 +76,12 @@ Resources:
   Route53RecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
-      HostedZoneId: "<your-hosted-zone-id>"
-      Name: !Sub "api.physio-suggest.com."
+      HostedZoneId: "ZXXXXXXXXXXXXX"
+      Name: !Sub "api.example.com."
       Type: A
       AliasTarget:
         DNSName: !GetAtt MyApiDomain.RegionalDomainName
-        HostedZoneId: "Z1YSHQZHG15GKL" # Update this value for the Tokyo region
+        HostedZoneId: "ZXXXXXXXXXXXXX"
 
 Outputs:
   ApiUrl:

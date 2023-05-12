@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: API Gateway with ALB as a backend for all paths and methods
+
+# ------------------------------------------------------------#
+#  VPCEndpoint
+# ------------------------------------------------------------#
+
+Resources:
+  VPCEndpointECR:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue VPC-ID
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !ImportValue SG-VPCEndpoint-01
+      SubnetIds:
+        - !ImportValue PrivateSubnet1-ID
+        - !ImportValue PrivateSubnet2-ID
+
+  VPCEndpointCWLogs:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue VPC-ID
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !ImportValue SG-VPCEndpoint-01
+      SubnetIds:
+        - !ImportValue PrivateSubnet1-ID
+        - !ImportValue PrivateSubnet2-ID
+
+  VPCEndpointCWMetrics:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue VPC-ID
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.monitoring'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !ImportValue SG-VPCEndpoint-01
+      SubnetIds:
+        - !ImportValue PrivateSubnet1-ID
+        - !ImportValue PrivateSubnet2-ID
+
+  VPCEndpointECRAPI:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue VPC-ID
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SecurityGroupIds:
+        - !ImportValue SG-VPCEndpoint-01
+      SubnetIds:
+        - !ImportValue PrivateSubnet1-ID
+        - !ImportValue PrivateSubnet2-ID
+
+  VPCEndpointS3:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue VPC-ID
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !ImportValue PrivateRouteTable1-ID
+        - !ImportValue PrivateRouteTable2-ID
+

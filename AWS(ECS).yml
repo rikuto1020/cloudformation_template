@@ -1,0 +1,453 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Fargate , ECS
+
+# ------------------------------------------------------------#
+#  ECSCluster
+# ------------------------------------------------------------#
+
+Resources:
+  MyECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: pt-app-cluster
+
+# ------------------------------------------------------------#
+#   ECSRole
+# ------------------------------------------------------------#
+
+  MyExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MyExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  MyTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: MyTaskRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+# ------------------------------------------------------------#
+#  TaskDefinition
+# ------------------------------------------------------------#
+
+  MyTaskDefinition1:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: nginx
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      NetworkMode: awsvpc
+      Cpu: '1024'
+      Memory: '2048' 
+      ExecutionRoleArn: !Ref MyExecutionRole
+      TaskRoleArn: !Ref MyTaskRole
+      ContainerDefinitions:
+        - Name: nginx
+          Image:  xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          PortMappings:
+            - ContainerPort: 80
+          Essential: true
+          Environment:
+            - Name: RDS_DB_NAME
+              Value: mydb
+            - Name: RDS_USERNAME
+              Value: xxxxxxxxx
+            - Name: RDS_PASSWORD
+              Value: xxxxxxxxx
+            - Name: RDS_HOSTNAME
+              Value: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            - Name: RDS_PORT
+              Value: '3306'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue ECSLogGroup-ID
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs-nginx
+
+  MyTaskDefinition2:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: accounts
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      NetworkMode: awsvpc
+      Cpu: '1024' # CPU を 1 vCPU に変更
+      Memory: '2048' # メモリを 2 GB に変更
+      ExecutionRoleArn: !Ref MyExecutionRole
+      TaskRoleArn: !Ref MyTaskRole
+      ContainerDefinitions:
+        - Name: accounts
+          Image: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          PortMappings:
+            - ContainerPort: 8000
+          Essential: true
+          Environment:
+            - Name: RDS_DB_NAME
+              Value: mydb
+            - Name: RDS_USERNAME
+              Value: xxxxxxxxx
+            - Name: RDS_PASSWORD
+              Value: xxxxxxxxx
+            - Name: RDS_HOSTNAME
+              Value: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            - Name: RDS_PORT
+              Value: '3306'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue ECSLogGroup-ID
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs-accounts
+
+  MyTaskDefinition3:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: contact
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      NetworkMode: awsvpc
+      Cpu: '1024' 
+      Memory: '2048' 
+      ExecutionRoleArn: !Ref MyExecutionRole
+      TaskRoleArn: !Ref MyTaskRole
+      ContainerDefinitions:
+        - Name: contact
+          Image: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          PortMappings:
+            - ContainerPort: 8000
+          Essential: true
+          Environment:
+            - Name: RDS_DB_NAME
+              Value: mydb
+            - Name: RDS_USERNAME
+              Value: xxxxxxxxx
+            - Name: RDS_PASSWORD
+              Value: xxxxxxxxx
+            - Name: RDS_HOSTNAME
+              Value: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            - Name: RDS_PORT
+              Value: '3306'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue ECSLogGroup-ID
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs-contact
+  
+  MyTaskDefinition4:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: pt-suggest
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      NetworkMode: awsvpc
+      Cpu: '1024' # CPU を 1 vCPU に変更
+      Memory: '2048' # メモリを 2 GB に変更
+      ExecutionRoleArn: !Ref MyExecutionRole
+      TaskRoleArn: !Ref MyTaskRole
+      ContainerDefinitions:
+        - Name: pt-suggest
+          Image: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          PortMappings:
+            - ContainerPort: 8000
+          Essential: true
+          Environment:
+            - Name: RDS_DB_NAME
+              Value: mydb
+            - Name: RDS_USERNAME
+              Value: xxxxxxxxx
+            - Name: RDS_PASSWORD
+              Value: xxxxxxxxx
+            - Name: RDS_HOSTNAME
+              Value: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            - Name: RDS_PORT
+              Value: '3306'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue ECSLogGroup-ID
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs-pt-suggest
+
+  MyTaskDefinition5:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: pt-suggest-history
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      NetworkMode: awsvpc
+      Cpu: '1024' # CPU を 1 vCPU に変更
+      Memory: '2048' # メモリを 2 GB に変更
+      ExecutionRoleArn: !Ref MyExecutionRole
+      TaskRoleArn: !Ref MyTaskRole
+      ContainerDefinitions:
+        - Name: pt-suggest-history
+          Image: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          PortMappings:
+            - ContainerPort: 8000
+          Essential: true
+          Environment:
+            - Name: RDS_DB_NAME
+              Value: mydb
+            - Name: RDS_USERNAME
+              Value: xxxxxxxxx
+            - Name: RDS_PASSWORD
+              Value: xxxxxxxxx
+            - Name: RDS_HOSTNAME
+              Value: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            - Name: RDS_PORT
+              Value: '3306'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue ECSLogGroup-ID
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs-pt-suggest-history
+
+  MyTaskDefinition6:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: ptreport-search
+      RequiresCompatibilities:
+        - FARGATE
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+        CpuArchitecture: X86_64
+      NetworkMode: awsvpc
+      Cpu: '1024' # CPU を 1 vCPU に変更
+      Memory: '2048' # メモリを 2 GB に変更
+      ExecutionRoleArn: !Ref MyExecutionRole
+      TaskRoleArn: !Ref MyTaskRole
+      ContainerDefinitions:
+        - Name: ptreport-search
+          Image: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          PortMappings:
+            - ContainerPort: 8000
+          Essential: true
+          Environment:
+            - Name: RDS_DB_NAME
+              Value: mydb
+            - Name: RDS_USERNAME
+              Value: xxxxxxxxx
+            - Name: RDS_PASSWORD
+              Value: xxxxxxxxx
+            - Name: RDS_HOSTNAME
+              Value: xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            - Name: RDS_PORT
+              Value: '3306'
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !ImportValue ECSLogGroup-ID
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs-ptreport-search
+
+# ------------------------------------------------------------#
+#  ECSService
+# ------------------------------------------------------------#
+
+  MyService1:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: nginx-service
+      Cluster: !Ref MyECSCluster
+      LaunchType: FARGATE
+      TaskDefinition: !Ref MyTaskDefinition1
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !ImportValue PrivateSubnet1-ID
+            - !ImportValue PrivateSubnet2-ID
+          SecurityGroups: 
+            - !ImportValue SG-ECS-01
+      LoadBalancers:
+        - TargetGroupArn: !ImportValue TG1-ARN
+          ContainerName: nginx
+          ContainerPort: 80
+
+  MyService2:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: accounts-service
+      Cluster: !Ref MyECSCluster
+      LaunchType: FARGATE
+      TaskDefinition: !Ref MyTaskDefinition2
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !ImportValue PrivateSubnet3-ID
+            - !ImportValue PrivateSubnet4-ID
+          SecurityGroups: 
+            - !ImportValue SG-ECS-02
+      LoadBalancers:
+        - TargetGroupArn: !ImportValue TG1-ARN-02
+          ContainerName: accounts
+          ContainerPort: 8000
+  
+  MyService3:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: contact-service
+      Cluster: !Ref MyECSCluster
+      LaunchType: FARGATE
+      TaskDefinition: !Ref MyTaskDefinition3
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !ImportValue PrivateSubnet3-ID
+            - !ImportValue PrivateSubnet4-ID
+          SecurityGroups: 
+            - !ImportValue SG-ECS-02
+      LoadBalancers:
+        - TargetGroupArn: !ImportValue TG2-ARN-02
+          ContainerName: contact
+          ContainerPort: 8000
+
+  MyService4:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: pt-suggest-service
+      Cluster: !Ref MyECSCluster
+      LaunchType: FARGATE
+      TaskDefinition: !Ref MyTaskDefinition4
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !ImportValue PrivateSubnet3-ID
+            - !ImportValue PrivateSubnet4-ID
+          SecurityGroups: 
+            - !ImportValue SG-ECS-02
+      LoadBalancers:
+        - TargetGroupArn: !ImportValue TG3-ARN-02
+          ContainerName: pt-suggest
+          ContainerPort: 8000
+
+  MyService5:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: pt-suggest-history-service
+      Cluster: !Ref MyECSCluster
+      LaunchType: FARGATE
+      TaskDefinition: !Ref MyTaskDefinition5
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !ImportValue PrivateSubnet3-ID
+            - !ImportValue PrivateSubnet4-ID
+          SecurityGroups: 
+            - !ImportValue SG-ECS-02
+      LoadBalancers:
+        - TargetGroupArn: !ImportValue TG4-ARN-02
+          ContainerName: pt-suggest-history
+          ContainerPort: 8000
+
+  MyService6:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: ptreport-search-service
+      Cluster: !Ref MyECSCluster
+      LaunchType: FARGATE
+      TaskDefinition: !Ref MyTaskDefinition6
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !ImportValue PrivateSubnet3-ID
+            - !ImportValue PrivateSubnet4-ID
+          SecurityGroups: 
+            - !ImportValue SG-ECS-02
+      LoadBalancers:
+        - TargetGroupArn: !ImportValue TG5-ARN-02
+          ContainerName: ptreport-search
+          ContainerPort: 8000
+
+Outputs:
+  MyECSClusterExport:
+    Description: "The ECS Cluster"
+    Value: !Ref MyECSCluster
+    Export:
+      Name: MyECSCluster-ID
+
+  MyService1Export1:
+    Description: "The ECS Service"
+    Value: !Ref MyService1
+    Export:
+      Name: MyService1-ID
+
+  MyService1Export2:
+    Description: "The ECS Service"
+    Value: !Ref MyService2
+    Export:
+      Name: MyService2-ID
+
+  MyService1Export3:
+    Description: "The ECS Service"
+    Value: !Ref MyService3
+    Export:
+      Name: MyService3-ID
+
+  MyService1Export4:
+    Description: "The ECS Service"
+    Value: !Ref MyService4
+    Export:
+      Name: MyService4-ID
+
+  MyService1Export5:
+    Description: "The ECS Service"
+    Value: !Ref MyService5
+    Export:
+      Name: MyService5-ID
+
+  MyService1Export:
+    Description: "The ECS Service"
+    Value: !Ref MyService6
+    Export:
+      Name: MyService6-ID

@@ -1,0 +1,232 @@
+
+Parameters:
+  ALBAccessLogsBucketName2:
+    Type: String
+    Description: "The name of the ALB access logs S3 bucket"
+
+# ------------------------------------------------------------#
+#  ALB
+# ------------------------------------------------------------#
+
+Resources:
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: project-ALB-02
+      Scheme: internal
+      Type: application
+      Subnets:
+        - !ImportValue PrivateSubnet3-ID
+        - !ImportValue PrivateSubnet4-ID
+      SecurityGroups:
+        - !ImportValue SG-ALB-02
+      Tags:
+        - Key: Name
+          Value: project-ALB-02
+      LoadBalancerAttributes:
+        - Key: access_logs.s3.enabled
+          Value: 'true'
+        - Key: access_logs.s3.bucket
+          Value: !ImportValue ALBAccessLogsBucketName2
+        - Key: access_logs.s3.prefix
+          Value: 'prod'    
+
+# ------------------------------------------------------------#
+#  ALBListener
+# ------------------------------------------------------------#
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TG1
+      LoadBalancerArn: !Ref ALB
+      Port: 8000
+      Protocol: HTTP
+
+# ------------------------------------------------------------#
+#  ALBListener-rule
+# ------------------------------------------------------------#
+
+  ListenerRule2:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TG2
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /prod/contact/*
+            - /prod/complete/*
+            - /prod/contact/
+            - /prod/complete/
+      ListenerArn: !Ref ALBListener
+      Priority: 1
+  
+  ListenerRule3:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TG3
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /prod/pt-suggestion/*
+            - /prod/pt-template/*
+            - /prod/pt-suggestion/
+            - /prod/pt-template/
+            - /prod/
+      ListenerArn: !Ref ALBListener
+      Priority: 2
+
+  ListenerRule4:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TG4
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /prod/proposal_list/*
+            - /prod/proposal_detail/*
+            - /prod/proposal_list/
+            - /prod/proposal_detail/
+      ListenerArn: !Ref ALBListener
+      Priority: 3
+
+  ListenerRule5:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TG5
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /prod/search/*
+            - /prod/search/
+      ListenerArn: !Ref ALBListener
+      Priority: 4
+
+# ------------------------------------------------------------#
+#  Targetgroup
+# ------------------------------------------------------------#
+
+  TG1:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: project2-TG-01
+      Port: 8000
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !ImportValue VPC-ID
+      HealthCheckPath: /healthz/
+      Tags:
+        - Key: Name
+          Value: project2-TG-01
+
+  TG2:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: project2-TG-02
+      Port: 8000
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !ImportValue VPC-ID
+      HealthCheckPath: /healthz/
+      Tags:
+        - Key: Name
+          Value: project2-TG-02
+
+  TG3:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: project2-TG-03
+      Port: 8000
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !ImportValue VPC-ID
+      HealthCheckPath: /healthz/
+      Tags:
+        - Key: Name
+          Value: project2-TG-03
+
+  TG4:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: project2-TG-04
+      Port: 8000
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !ImportValue VPC-ID
+      HealthCheckPath: /healthz/
+      Tags:
+        - Key: Name
+          Value: project2-TG-04
+
+  TG5:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: project2-TG-05
+      Port: 8000
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !ImportValue VPC-ID
+      HealthCheckPath: /healthz/
+      Tags:
+        - Key: Name
+          Value: project2-TG-05
+
+Outputs:
+  ALBDNSName:
+    Description: "The DNS name of the ALB"
+    Value: !GetAtt ALB.DNSName
+    Export:
+      Name: ALB-DNS-Name-02
+
+  ALBArn:
+      Description: "The ARN of the ALB"
+      Value: !Ref ALB
+      Export:
+        Name: ALBArn-02
+  
+  ALBListenerArn:
+    Description: The ARN of the ALB Listener
+    Value: !Ref ALBListener
+    Export:
+      Name: ALB-Listener-ARN-02
+
+  TG1Arn:
+    Description: The ARN of the Target Group 1
+    Value: !Ref TG1
+    Export:
+      Name: TG1-ARN-02
+
+  TG2Arn:
+    Description: The ARN of the Target Group 1
+    Value: !Ref TG2
+    Export:
+      Name: TG2-ARN-02
+
+  TG3Arn:
+    Description: The ARN of the Target Group 1
+    Value: !Ref TG3
+    Export:
+      Name: TG3-ARN-02
+
+  TG4Arn:
+    Description: The ARN of the Target Group 1
+    Value: !Ref TG4
+    Export:
+      Name: TG4-ARN-02
+
+  TG5Arn:
+    Description: The ARN of the Target Group 1
+    Value: !Ref TG5
+    Export:
+      Name: TG5-ARN-02
+  

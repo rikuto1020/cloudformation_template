@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ALB and VPC Flow Logs storage, ECS and RDS log storage using Kinesis Firehose
+Parameters:
+  MyDBInstanceId:
+    Type: String
+    Default: 'MyDBInstanceId'
+    Description: "Environment name"
+
+# ------------------------------------------------------------#
+#  S3Bucket
+# ------------------------------------------------------------#
+
+Resources:
+  ALBAccessLogsBucket1:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "alb01-access-logs-bucket-${AWS::AccountId}"
+  
+  ALBAccessLogsBucketPolicy1:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ALBAccessLogsBucket1
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: 'arn:aws:iam::xxxxxxxxxxxx:root'
+            Action: 's3:PutObject'
+            Resource: !Sub 'arn:aws:s3:::${ALBAccessLogsBucket1}/prod/AWSLogs/*'
+    
+  ALBAccessLogsBucket2:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "alb02-access-logs-bucket-${AWS::AccountId}"
+  
+  ALBAccessLogsBucketPolicy2:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ALBAccessLogsBucket2
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: 'arn:aws:iam::xxxxxxxxxxxx:root'
+            Action: 's3:PutObject'
+            Resource: !Sub 'arn:aws:s3:::${ALBAccessLogsBucket2}/prpd/AWSLogs/*'
+
+  VPCFlowLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "vpc-flow-logs-bucket-${AWS::AccountId}"
+
+  ECSLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "ecs-logs-bucket-${AWS::AccountId}"
+
+  RDSLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "rds-logs-bucket-${AWS::AccountId}"
+
+# ------------------------------------------------------------#
+#  LogGroup
+# ------------------------------------------------------------#
+
+  ECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: ecs-log-group
+      RetentionInDays: 14
+
+# ------------------------------------------------------------#
+#  IAMRole
+# ------------------------------------------------------------#
+
+  LogDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - firehose.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: LogDeliveryPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                Resource:
+                  - !GetAtt ECSLogGroup.Arn
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/rds/instance/${MyDBInstanceId}/audit:*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource:
+                  - !Join ['', ['arn:aws:s3:::', !Ref ECSLogsBucket, '/*']]
+                  - !Join ['', ['arn:aws:s3:::', !Ref RDSLogsBucket, '/*']]
+  
+  SubscriptionFilterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - logs.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: SubscriptionFilterPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - firehose:PutRecord
+                  - firehose:PutRecordBatch
+                Resource:
+                  - !GetAtt KinesisFirehoseToECSLogs.Arn
+                  - !GetAtt KinesisFirehoseToRDSLogs1.Arn
+                  - !GetAtt KinesisFirehoseToRDSLogs2.Arn
+                  - !GetAtt KinesisFirehoseToRDSLogs3.Arn
+                  
+# ------------------------------------------------------------#
+#  Kinesis
+# ------------------------------------------------------------#
+
+  KinesisFirehoseToECSLogs:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: kinesis-firehose-to-ecs-logs
+      S3DestinationConfiguration:
+        BucketARN: !GetAtt ECSLogsBucket.Arn
+        BufferingHints:
+          IntervalInSeconds: 60
+          SizeInMBs: 5
+        CompressionFormat: GZIP
+        Prefix: ecs-logs/
+        ErrorOutputPrefix: error/
+        RoleARN: !GetAtt LogDeliveryRole.Arn
+
+  KinesisFirehoseToRDSLogs1:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: kinesis-firehose-to-rds-logs1
+      S3DestinationConfiguration:
+        BucketARN: !GetAtt RDSLogsBucket.Arn
+        BufferingHints:
+          IntervalInSeconds: 60
+          SizeInMBs: 5
+        CompressionFormat: GZIP
+        Prefix: rds-logs/error
+        ErrorOutputPrefix: error/
+        RoleARN: !GetAtt LogDeliveryRole.Arn
+
+  KinesisFirehoseToRDSLogs2:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: kinesis-firehose-to-rds-logs2
+      S3DestinationConfiguration:
+        BucketARN: !GetAtt RDSLogsBucket.Arn
+        BufferingHints:
+          IntervalInSeconds: 60
+          SizeInMBs: 5
+        CompressionFormat: GZIP
+        Prefix: rds-logs/general
+        ErrorOutputPrefix: error/
+        RoleARN: !GetAtt LogDeliveryRole.Arn
+
+  KinesisFirehoseToRDSLogs3:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: kinesis-firehose-to-rds-logs3
+      S3DestinationConfiguration:
+        BucketARN: !GetAtt RDSLogsBucket.Arn
+        BufferingHints:
+          IntervalInSeconds: 60
+          SizeInMBs: 5
+        CompressionFormat: GZIP
+        Prefix: rds-logs/slowquery
+        ErrorOutputPrefix: error/
+        RoleARN: !GetAtt LogDeliveryRole.Arn
+
+# ------------------------------------------------------------#
+#  SubscriptionFilter
+# ------------------------------------------------------------#
+
+  ECSSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: !GetAtt KinesisFirehoseToECSLogs.Arn
+      FilterPattern: ""
+      LogGroupName: !Ref ECSLogGroup
+      RoleArn: !GetAtt SubscriptionFilterRole.Arn
+
+  RDSSubscriptionFilter1:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: !GetAtt KinesisFirehoseToRDSLogs1.Arn
+      FilterPattern: ""
+      LogGroupName: !Sub '/aws/rds/instance/${MyDBInstanceId}/error'
+      RoleArn: !GetAtt SubscriptionFilterRole.Arn
+
+  RDSSubscriptionFilter2:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: !GetAtt KinesisFirehoseToRDSLogs2.Arn
+      FilterPattern: ""
+      LogGroupName: !Sub '/aws/rds/instance/${MyDBInstanceId}/general'
+      RoleArn: !GetAtt SubscriptionFilterRole.Arn
+
+  RDSSubscriptionFilter3:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: !GetAtt KinesisFirehoseToRDSLogs3.Arn
+      FilterPattern: ""
+      LogGroupName: !Sub '/aws/rds/instance/${MyDBInstanceId}/slowquery'
+      RoleArn: !GetAtt SubscriptionFilterRole.Arn
+    
+Outputs:
+  ECSLogGroupId:
+    Description: "The ID of the created ECSLogGroup"
+    Value: !Ref ECSLogGroup
+    Export:
+      Name: "ECSLogGroup2-ID"
+  
+  ALBAccessLogsBucketName1:
+    Description: "The name of the ALB access logs S3 bucket"
+    Value: !Ref ALBAccessLogsBucket1
+    Export:
+      Name: ALBAccessLogsBucketName1
+
+  ALBAccessLogsBucketName2:
+    Description: "The name of the ALB access logs S3 bucket"
+    Value: !Ref ALBAccessLogsBucket2
+    Export:
+      Name: ALBAccessLogsBucketName2

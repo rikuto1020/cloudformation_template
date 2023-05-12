@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: API Gateway with ALB as a backend for all paths and methods
+
+# ------------------------------------------------------------#
+#  SecurityGroup
+# ------------------------------------------------------------#
+
+Resources:
+  SecurityGroup1:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS-SG-01
+      VpcId: !ImportValue VPC-ID
+      Tags:
+        - Key: Name
+          Value: ECS-SG-01
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref SecurityGroup4
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroup2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS-SG-02
+      VpcId: !ImportValue VPC-ID
+      Tags:
+        - Key: Name
+          Value: ECS-SG-02
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref SecurityGroup5
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroup3:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS-SG-01
+      VpcId: !ImportValue VPC-ID
+      Tags:
+        - Key: Name
+          Value: RDS-SG-01
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref SecurityGroup2
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroup4:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ALB-SG-01
+      VpcId: !ImportValue VPC-ID
+      Tags:
+        - Key: Name
+          Value: ALB-SG-01
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref SecurityGroup6
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+  
+  SecurityGroup5:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ALB-SG-02
+      VpcId: !ImportValue VPC-ID
+      Tags:
+        - Key: Name
+          Value: ALB-SG-02
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref SecurityGroup1
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroup6:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for project-API-SG-01
+      VpcId: !ImportValue VPC-ID
+      Tags:
+        - Key: Name
+          Value: project-API-SG-01
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+  SecurityGroup7:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for project-VPCEndpoint-SG-01
+      VpcId: !ImportValue VPC-ID
+      Tags:
+        - Key: Name
+          Value: project-VPCEndpoint-SG-01
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref SecurityGroup1
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref SecurityGroup2
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref SecurityGroup3
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+
+Outputs:
+  SecurityGroupId1:
+    Description: "The ID of the created SG-ECS-01"
+    Value: !Ref SecurityGroup1
+    Export:
+      Name: "SG-ECS-01"
+  
+  SecurityGroupId2:
+    Description: "The ID of the created SG-ECS-02"
+    Value: !Ref SecurityGroup2
+    Export:
+      Name: "SG-ECS-02"
+
+  SecurityGroupId3:
+    Description: "The ID of the created SG-RDS-01"
+    Value: !Ref SecurityGroup3
+    Export:
+      Name: "SG-RDS-01"
+
+  SecurityGroupId4:
+    Description: "The ID of the created SG-ALB-01"
+    Value: !Ref SecurityGroup4
+    Export:
+      Name: "SG-ALB-01"
+
+  SecurityGroupId5:
+    Description: "The ID of the created SG-ALB-02"
+    Value: !Ref SecurityGroup5
+    Export:
+      Name: "SG-ALB-02"
+
+  SecurityGroupId6:
+    Description: "The ID of the created API-SG-01"
+    Value: !Ref SecurityGroup6
+    Export:
+      Name: "API-SG-01"
+
+  SecurityGroupId7:
+    Description: "The ID of the created SG-VPCEndpoint-01"
+    Value: !Ref SecurityGroup7
+    Export:
+      Name: "SG-VPCEndpoint-01"

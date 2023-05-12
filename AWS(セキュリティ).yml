@@ -1,0 +1,242 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Security monitoring with Config Rule, Security Hub, EventBridge, and SNS
+
+# ------------------------------------------------------------#
+#  ConfigRule
+# ------------------------------------------------------------#
+
+Resources:
+  RestrictedSSHRules:
+    Type: AWS::Config::ConfigRule
+    DependsOn: ConfigRecorder
+    Properties:
+      ConfigRuleName: RestrictedSSHRules
+      Description: Checks whether security groups restrict SSH traffic
+      Source:
+        Owner: AWS
+        SourceIdentifier: RESTRICTED_INCOMING_TRAFFIC
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::SecurityGroup
+
+  RestrictedCommonPortsRule:
+    Type: AWS::Config::ConfigRule
+    DependsOn: ConfigRecorder
+    Properties:
+      ConfigRuleName: RestrictedCommonPorts
+      Description: Checks whether security groups restrict common ports
+      Source:
+        Owner: AWS
+        SourceIdentifier: RESTRICTED_INCOMING_TRAFFIC
+      InputParameters:
+        blockedPort1: 8000
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::SecurityGroup
+
+# ------------------------------------------------------------#
+#  S3Bucket
+# ------------------------------------------------------------#
+
+  ConfigLogS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: "my-bucket-name"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+# ------------------------------------------------------------#
+#  S3BucketPolicy
+# ------------------------------------------------------------#
+
+  ConfigLogS3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn: ConfigLogS3Bucket
+    Properties:
+      Bucket: !Ref ConfigLogS3Bucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !Sub arn:aws:s3:::${ConfigLogS3Bucket}
+          - Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub arn:aws:s3:::${ConfigLogS3Bucket}/AWSLogs/${AWS::AccountId}/Config/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+          - Sid: AllowSSLRequestsOnly
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !Sub arn:aws:s3:::${ConfigLogS3Bucket}
+              - !Sub arn:aws:s3:::${ConfigLogS3Bucket}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+# ------------------------------------------------------------#
+#  ConfigRole
+# ------------------------------------------------------------#
+
+  ConfigRole:
+    Type: AWS::IAM::ServiceLinkedRole
+    Properties:
+      AWSServiceName: config.amazonaws.com
+
+# ------------------------------------------------------------#
+#  ConfigRecorder
+# ------------------------------------------------------------#
+
+  ConfigRecorder:
+    Type: AWS::Config::ConfigurationRecorder
+    DependsOn: ConfigLogS3Bucket
+    Properties:
+      RecordingGroup:
+        AllSupported: true
+        IncludeGlobalResourceTypes: true
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig
+
+  ConfigDeliveryChannel:
+    Type: AWS::Config::DeliveryChannel
+    DependsOn: ConfigLogS3Bucket
+    Properties:
+      S3BucketName: !Ref ConfigLogS3Bucket
+
+# ------------------------------------------------------------#
+# 　  SecurityHub
+# ------------------------------------------------------------#
+
+  SecurityHub:
+    Type: AWS::SecurityHub::Hub
+
+# ------------------------------------------------------------#
+#  EventBridge
+# ------------------------------------------------------------#
+
+  EventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Event rule for Security Hub findings
+      EventPattern:
+        source:
+          - "aws.securityhub"
+        detail-type:
+          - "Security Hub Findings - Imported"
+      State: ENABLED
+      Targets:
+        - Arn: !Ref SNSNotificationTopic
+          Id: SNSNotificationTopic
+          InputTransformer:
+            InputPathsMap:
+              "title": "$.detail.findings[0].Title"
+              "severity": "$.detail.findings[0].Severity.Label"
+              "description": "$.detail.findings[0].Description"
+            InputTemplate: |-
+                "title : <title>"
+                "severity : <severity>"
+                "description : <description>"
+
+# ------------------------------------------------------------#
+#  SNS
+# ------------------------------------------------------------#
+
+  SNSNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: SecurityNotificationTopic
+      TopicName: SecurityNotificationTopic
+
+  SNSNotificationTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridgeToSend
+            Effect: Allow
+            Principal:
+              Service: "events.amazonaws.com"
+            Action: "sns:Publish"
+            Resource: !Ref SNSNotificationTopic
+      Topics:
+        - !Ref SNSNotificationTopic
+
+  SNSNotificationSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      Endpoint: example@example.com
+      TopicArn: !Ref SNSNotificationTopic
+
+# ------------------------------------------------------------#
+#  AWS WAF
+# ------------------------------------------------------------#
+
+  WAFWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: MyWebAcl
+      Scope: REGIONAL
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: MyWebAcl
+      DefaultAction:
+        Allow: {}
+      Description: A WebACL with core rule set and SQL database protection
+      Rules:
+        - Name: AWSManagedRulesCommonRuleSet
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: MyWebAcl
+          Priority: 1
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+              ExcludedRules:
+                - Name: NoUserAgent_HEADER
+                - Name: UserAgent_BadBots_HEADER
+                - Name: SizeRestrictions_QUERYSTRING
+                - Name: SizeRestrictions_Cookie_HEADER
+                - Name: SizeRestrictions_BODY
+                - Name: SizeRestrictions_URIPATH
+                - Name: EC2MetaDataSSRF_BODY
+                - Name: EC2MetaDataSSRF_COOKIE
+                - Name: EC2MetaDataSSRF_URIPATH
+                - Name: EC2MetaDataSSRF_QUERYARGUMENTS
+                - Name: GenericLFI_QUERYARGUMENTS
+                - Name: GenericLFI_URIPATH
+                - Name: GenericLFI_BODY
+                - Name: RestrictedExtensions_URIPATH
+                - Name: RestrictedExtensions_QUERYARGUMENTS
+                - Name: GenericRFI_QUERYARGUMENTS
+                - Name: GenericRFI_BODY
+                - Name: GenericRFI_URIPATH
+                - Name: CrossSiteScripting_COOKIE
+                - Name: CrossSiteScripting_QUERYARGUMENTS
+                - Name: CrossSiteScripting_BODY
+                - Name: CrossSiteScripting_URIPATH
+
+  WAFRegionalAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      WebACLArn: !Ref WAFWebAcl
+      ResourceArn: !ImportValue ALBArn
