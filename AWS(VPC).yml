@@ -127,6 +127,24 @@ Resources:
       VpcId: !Ref VPC
 
 # ------------------------------------------------------------#
+#   NATGateway
+# ------------------------------------------------------------#
+
+  NATGateway:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      AllocationId: !GetAtt NATGatewayEIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+      - Key: stack
+        Value: production
+        
+  NATGatewayEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+        Domain: vpc
+
+# ------------------------------------------------------------#
 #  RouteTable
 # ------------------------------------------------------------#
 
@@ -222,7 +240,7 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
+      NatGatewayId: !Ref NATGateway
 
 Outputs:
   VPCId:

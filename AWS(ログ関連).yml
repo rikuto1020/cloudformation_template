@@ -5,6 +5,9 @@ Parameters:
     Type: String
     Default: 'MyDBInstanceId'
     Description: "Environment name"
+  S3BucketName:
+    Type: String
+    Description: "The name of the S3 Bucket"
 
 # ------------------------------------------------------------#
 #  S3Bucket
@@ -61,6 +64,47 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub "rds-logs-bucket-${AWS::AccountId}"
+
+# ------------------------------------------------------------#
+#  FlowLog
+# ------------------------------------------------------------#
+
+  FlowLogRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: vpc-flow-logs.amazonaws.com
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: FlowLogPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'logs:CreateLogGroup'
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            - 'logs:DescribeLogGroups'
+            - 'logs:DescribeLogStreams'
+            Resource: '*'
+          - Effect: Allow
+            Action: s3:PutObject
+            Resource: !Sub 'arn:aws:s3:::${S3BucketName}/*'
+            
+  FlowLog:
+    Type: 'AWS::EC2::FlowLog'
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt FlowLogRole.Arn
+      LogDestinationType: s3
+      LogDestination: !Sub 'arn:aws:s3:::${S3BucketName}'
+      ResourceType: VPC
+      ResourceId: !ImportValue  VpcId
+      TrafficType: ALL
 
 # ------------------------------------------------------------#
 #  LogGroup
