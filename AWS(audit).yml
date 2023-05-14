@@ -12,12 +12,6 @@ Parameters:
 # ------------------------------------------------------------#
 
 Resources:
-  # AWS Config用のS3バケット
-  ConfigBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "config-bucket-${AWS::AccountId}"
-
   # CloudTrail用のS3バケット
   CloudTrailBucket:
     Type: AWS::S3::Bucket

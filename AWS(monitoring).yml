@@ -23,7 +23,7 @@ Resources:
 #  EventBridge
 # ------------------------------------------------------------#
 
-  EventRule:
+  EventRule1:
     Type: AWS::Events::Rule
     Properties:
       Description: Trigger SNS notification when CloudWatch Alarm is in ALARM state
@@ -52,6 +52,19 @@ Resources:
               "アラーム名: <AlarmName>"
               "発生メトリクス: <MetricsName>"
               "理由: <Reason>"
+  
+  EventRule2:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Health Dashboard Notification
+      EventPattern:
+        source:
+          - aws.health
+        detail-type:
+          - AWS Health Event
+      Targets:
+        - Arn: !Ref SNSTopic
+          Id: SNSTopicTarget
 
 # ------------------------------------------------------------#
 #  CloudWatchAlarm
