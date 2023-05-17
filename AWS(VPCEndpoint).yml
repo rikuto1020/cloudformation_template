@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: API Gateway with ALB as a backend for all paths and methods
+Description: CLoudFormationTemplate for VPCEndPoint
 
 # ------------------------------------------------------------#
 #  VPCEndpoint

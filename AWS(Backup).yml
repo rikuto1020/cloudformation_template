@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: AWS Backup for RDS
+Description: CLoudFormationTemplate for AWS Backup 
 
 Parameters:
   MyDBInstanceId:

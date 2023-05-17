@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Security monitoring with Config Rule, Security Hub, EventBridge, and SNS
+Description: CLoudFormationTemplate for Security monitoring with Config Rule, Security Hub, EventBridge, and SNS
 
 # ------------------------------------------------------------#
 #  ConfigRule

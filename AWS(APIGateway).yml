@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: APIGateway,Route53 Record Set
+Description: CLoudFormationTemplate for APIGateway,Route53 Record Set
 
 # ------------------------------------------------------------#
 #  API Gateway

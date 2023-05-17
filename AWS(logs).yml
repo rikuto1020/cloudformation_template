@@ -99,7 +99,6 @@ Resources:
   FlowLog:
     Type: 'AWS::EC2::FlowLog'
     Properties:
-      DeliverLogsPermissionArn: !GetAtt FlowLogRole.Arn
       LogDestinationType: s3
       LogDestination: !Sub 'arn:aws:s3:::${S3BucketName}'
       ResourceType: VPC

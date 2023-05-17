@@ -343,7 +343,7 @@ Resources:
       MetricName: CPUUtilization
       Dimensions:
         - Name: DBInstanceIdentifier
-          Value: !ImportValue MyRDSInstanceIdentifier
+          Value: !ImportValue MyDBInstanceId
       Statistic: Average
       Period: '60'
       EvaluationPeriods: '1'

@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: AWS Config, CloudTrail, ECS, and RDS log storage using Kinesis Firehose
+Description: CLoudFormationTemplate for AWS Config, CloudTrail, ECS, and RDS log storage using Kinesis Firehose
 
 Parameters:
   MyDBInstanceId:
